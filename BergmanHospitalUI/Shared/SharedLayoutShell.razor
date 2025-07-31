@@ -1,0 +1,43 @@
+﻿@using BergmanHospitalUI.Services
+@using BergmanHospitalUI.Models
+@using Microsoft.AspNetCore.Components.Authorization;
+
+@inject NavigationManager Navigation
+@inject AuthenticationStateProvider AuthProvider
+@inject TokenProvider TokenProvider
+
+<div class="main-layout">
+    <div class="sidebar">
+        @SidebarContent
+    </div>
+
+    <main class="main-content">
+        <div class="top-row px-4 d-flex justify-content-between align-items-center">
+            <h4 class="mb-0">@Title</h4>
+            <AuthorizeView>
+                <Authorized>
+                    <button class="btn btn-sm btn-outline-danger" @onclick="Logout">Logout</button>
+                </Authorized>
+            </AuthorizeView>
+        </div>
+
+        <article class="content px-4">
+            @ChildContent
+        </article>
+    </main>
+</div>
+
+@code {
+    [Parameter] public string Title { get; set; } = string.Empty;
+    [Parameter] public RenderFragment SidebarContent { get; set; } = default!;
+    [Parameter] public RenderFragment ChildContent { get; set; } = default!;
+
+    private async Task Logout()
+    {
+        TokenProvider.ClearToken();
+        if (AuthProvider is CustomAuthStateProvider custom)
+            custom.NotifyAuthenticationStateChanged();
+
+        Navigation.NavigateTo("/login", forceLoad: true);
+    }
+}

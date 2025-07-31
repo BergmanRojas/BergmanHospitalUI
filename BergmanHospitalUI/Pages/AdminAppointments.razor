@@ -1,0 +1,180 @@
+﻿@using BergmanHospitalUI.Enums
+
+@page "/admin-appointments"
+@inject HttpClient Http
+@inject IJSRuntime JS
+
+<h3>All Appointments</h3>
+
+@if (appointments == null)
+{
+    <p><em>Loading appointments...</em></p>
+}
+else
+{
+    <h5>Export Appointments CSV (Date Filter)</h5>
+    <div class="row mb-3">
+        <div class="col-md-3">
+            <InputDate @bind-Value="filterStart" class="form-control" />
+        </div>
+        <div class="col-md-3">
+            <InputDate @bind-Value="filterEnd" class="form-control" />
+        </div>
+        <div class="col-md-3">
+            <button class="btn btn-outline-primary" @onclick="DownloadCsvReport">Download CSV</button>
+        </div>
+    </div>
+
+    <br />
+
+    <table class="table table-bordered">
+        <thead>
+            <tr>
+                <th>Date</th>
+                <th>Patient</th>
+                <th>Doctor</th>
+                <th>Status</th>
+                <th>Notes</th>
+                <th>Doctor Approved</th>
+                <th>Toggle Approval</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var appt in appointments)
+            {
+                <tr>
+                    <td>@appt.ScheduledDateTime.ToString("yyyy-MM-dd HH:mm")</td>
+                    <td>@appt.Patient?.FullName</td>
+                    <td>@appt.Doctor?.FullName</td>
+                    <td>@appt.Status.ToString()</td>
+                    <td>@appt.Notes</td>
+                    <td>
+                        @if (appt.Doctor?.IsApproved == true)
+                        {
+                            <span class="text-success">Yes</span>
+                        }
+                        else
+                        {
+                            <span class="text-danger">No</span>
+                        }
+                    </td>
+                    <td>
+                        @if (appt.Doctor != null)
+                        {
+                            <button class="btn btn-sm @(appt.Doctor.IsApproved ? "btn-warning" : "btn-success")"
+                                    @onclick="() => ToggleDoctorApproval(appt.Doctor.Id)">
+                                @(appt.Doctor.IsApproved ? "Revoke" : "Approve")
+                            </button>
+                        }
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}
+
+@code {
+    private List<AppointmentDto> appointments = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        var result = await Http.GetFromJsonAsync<PaginatedAppointments>("api/appointments/search");
+
+        if (result != null)
+        {
+            appointments = result.Data;
+        }
+    }
+
+    private async Task ToggleDoctorApproval(string doctorId)
+    {
+        var doctor = appointments.Select(a => a.Doctor).FirstOrDefault(d => d?.Id == doctorId);
+
+        if (doctor == null)
+            return;
+
+        var endpoint = doctor.IsApproved
+            ? $"api/users/{doctorId}/revoke"
+            : $"api/users/{doctorId}/approve";
+
+        var response = await Http.PostAsync(endpoint, null);
+        if (response.IsSuccessStatusCode)
+        {
+            doctor.IsApproved = !doctor.IsApproved;
+        }
+    }
+
+    private DateTime? filterStart = null;
+    private DateTime? filterEnd = null;
+
+    private async Task DownloadCsvReport()
+    {
+        try
+        {
+            var url = "api/reports/appointments/csv";
+
+            var parameters = new List<string>();
+            if (filterStart.HasValue)
+                parameters.Add($"startDate={filterStart.Value:yyyy-MM-dd}");
+
+            if (filterEnd.HasValue)
+                parameters.Add($"endDate={filterEnd.Value:yyyy-MM-dd}");
+
+            if (parameters.Any())
+                url += "?" + string.Join("&", parameters);
+
+            var response = await Http.GetAsync(url);
+
+            if (response.IsSuccessStatusCode)
+            {
+                var csvBytes = await response.Content.ReadAsByteArrayAsync();
+                var fileName = $"appointments_{DateTime.Now:yyyyMMdd_HHmm}.csv";
+
+                await JS.InvokeVoidAsync(
+                    "downloadFileFromBytes",
+                    fileName,
+                    "text/csv",
+                    Convert.ToBase64String(csvBytes)
+                );
+            }
+            else
+            {
+                Console.WriteLine("Failed to download CSV report.");
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error: {ex.Message}");
+        }
+    }
+
+
+
+
+    public class PaginatedAppointments
+    {
+        public List<AppointmentDto> Data { get; set; } = new();
+    }
+
+    public class AppointmentDto
+    {
+        public int Id { get; set; }
+        public DateTime ScheduledDateTime { get; set; }
+        public string Notes { get; set; } = string.Empty;
+        public AppointmentStatus Status { get; set; }
+        public DoctorInfo? Doctor { get; set; }
+        public PatientInfo? Patient { get; set; }
+    }
+
+    public class DoctorInfo
+    {
+        public string Id { get; set; } = string.Empty;
+        public string FullName { get; set; } = string.Empty;
+        public bool IsApproved { get; set; }
+    }
+
+    public class PatientInfo
+    {
+        public string FullName { get; set; } = string.Empty;
+    }
+}

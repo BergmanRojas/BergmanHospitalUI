@@ -1,0 +1,57 @@
+﻿@page "/doctor-prescriptions"
+@inject HttpClient Http
+
+<h3>Issued Prescriptions</h3>
+
+@if (prescriptions == null)
+{
+    <p><em>Loading...</em></p>
+}
+else if (!prescriptions.Any())
+{
+    <p>No prescriptions found.</p>
+}
+else
+{
+    <table class="table">
+        <thead>
+            <tr>
+                <th>Patient</th>
+                <th>Medication</th>
+                <th>Dosage</th>
+                <th>Instructions</th>
+                <th>Issued At</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var p in prescriptions)
+            {
+                <tr>
+                    <td>@p.PatientName</td>
+                    <td>@p.MedicationName</td>
+                    <td>@p.Dosage</td>
+                    <td>@p.Instructions</td>
+                    <td>@p.IssuedAt.ToString("yyyy-MM-dd")</td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}
+
+@code {
+    private List<PrescriptionDto> prescriptions = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        prescriptions = await Http.GetFromJsonAsync<List<PrescriptionDto>>("api/prescriptions/by-doctor") ?? new();
+    }
+
+    public class PrescriptionDto
+    {
+        public string PatientName { get; set; } = string.Empty;
+        public string MedicationName { get; set; } = string.Empty;
+        public string Dosage { get; set; } = string.Empty;
+        public string Instructions { get; set; } = string.Empty;
+        public DateTime IssuedAt { get; set; }
+    }
+}

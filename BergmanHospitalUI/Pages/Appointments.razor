@@ -1,0 +1,30 @@
+﻿@using Microsoft.AspNetCore.Components.Authorization;
+
+@page "/appointments"
+@inject NavigationManager Nav
+@inject AuthenticationStateProvider AuthProvider
+
+@code {
+    protected override async Task OnInitializedAsync()
+    {
+        var auth = await AuthProvider.GetAuthenticationStateAsync();
+        var user = auth.User;
+
+        if (user.IsInRole("Admin"))
+        {
+            Nav.NavigateTo("/admin-appointments", forceLoad: true);
+        }
+        else if (user.IsInRole("Doctor"))
+        {
+            Nav.NavigateTo("/doctor-appointments", forceLoad: true);
+        }
+        else if (user.IsInRole("Patient"))
+        {
+            Nav.NavigateTo("/my-appointments", forceLoad: true);
+        }
+        else
+        {
+            Nav.NavigateTo("/login");
+        }
+    }
+}

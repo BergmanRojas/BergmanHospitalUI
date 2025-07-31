@@ -1,0 +1,65 @@
+﻿@using Microsoft.AspNetCore.Components.Authorization
+
+@page "/prescriptions"
+@inject HttpClient Http
+@inject AuthenticationStateProvider AuthProvider
+
+<h3>My Prescriptions</h3>
+
+@if (prescriptions == null)
+{
+    <p><em>Loading...</em></p>
+}
+else if (!prescriptions.Any())
+{
+    <p>No prescriptions found.</p>
+}
+else
+{
+    <table class="table">
+        <thead>
+            <tr>
+                <th>Medication</th>
+                <th>Dosage</th>
+                <th>Instructions</th>
+                <th>Issued Date</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var p in prescriptions)
+            {
+                <tr>
+                    <td>@p.MedicationName</td>
+                    <td>@p.Dosage</td>
+                    <td>@p.Instructions</td>
+                    <td>@p.IssuedAt.ToString("yyyy-MM-dd")</td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}
+
+@code {
+    private List<PrescriptionDto> prescriptions = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        var authState = await AuthProvider.GetAuthenticationStateAsync();
+        var userId = authState.User.FindFirst(c => c.Type.Contains("nameidentifier"))?.Value;
+
+        if (!string.IsNullOrWhiteSpace(userId))
+        {
+            var result = await Http.GetFromJsonAsync<List<PrescriptionDto>>($"api/prescriptions?patientId={userId}");
+            if (result != null)
+                prescriptions = result;
+        }
+    }
+
+    public class PrescriptionDto
+    {
+        public string MedicationName { get; set; } = "";
+        public string Dosage { get; set; } = "";
+        public string Instructions { get; set; } = "";
+        public DateTime IssuedAt { get; set; }
+    }
+}

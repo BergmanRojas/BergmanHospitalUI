@@ -1,0 +1,192 @@
+﻿@page "/my-appointments"
+@using BergmanHospitalUI.Enums
+@using Microsoft.AspNetCore.Components.Authorization
+@inject HttpClient Http
+@inject AuthenticationStateProvider AuthStateProvider
+
+@inject AuthenticationStateProvider AuthProvider
+
+<h3>My Appointments</h3>
+
+@if (appointments == null)
+{
+    <p><em>Loading...</em></p>
+}
+else if (!appointments.Any())
+{
+    <p>No appointments found.</p>
+}
+else
+{
+    <table class="table">
+        <thead>
+            <tr>
+                <th>Date</th>
+                <th>Status</th>
+                <th>Doctor</th>
+                <th>Notes</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var appt in appointments)
+            {
+                <tr>
+                    <td>@appt.ScheduledDateTime.ToString("yyyy-MM-dd HH:mm")</td>
+                    <td>@appt.Status</td>
+                    <td>@appt.Doctor?.FullName</td>
+                    <td>@appt.Notes</td>
+                    <td>
+                        @if (appt.Status == AppointmentStatus.Approved && appt.ScheduledDateTime > DateTime.Now.AddHours(48))
+                        {
+                            <button class="btn btn-sm btn-warning me-1" @onclick="() => ShowRescheduleForm(appt.Id)">Reschedule</button>
+                            <button class="btn btn-sm btn-danger" @onclick="() => CancelAppointment(appt.Id)">Cancel</button>
+                        }
+                        @if (appt.Status == AppointmentStatus.Completed)
+                        {
+                            <button class="btn btn-sm btn-primary mt-1" @onclick="() => ShowFeedbackForm(appt.Id)">Give Feedback</button>
+                        }
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}
+
+@if (rescheduleAppointmentId.HasValue)
+{
+    <EditForm Model="@rescheduleForm" OnValidSubmit="SubmitReschedule">
+        <h5>Reschedule Appointment</h5>
+        <input @bind-value="rescheduleForm.NewDate" type="datetime-local" class="form-control mb-2" />
+        <button class="btn btn-success">Confirm</button>
+        <button class="btn btn-secondary ms-2" @onclick="() => rescheduleAppointmentId = null">Cancel</button>
+    </EditForm>
+}
+
+@if (feedbackAppointmentId.HasValue)
+{
+    <EditForm Model="@feedbackForm" OnValidSubmit="SubmitFeedback">
+        <h5>Submit Feedback</h5>
+        <div class="mb-2">
+            <label>Rating (1-5)</label>
+            <InputNumber @bind-Value="feedbackForm.Rating" class="form-control" min="1" max="5" />
+        </div>
+        <div class="mb-2">
+            <label>Comment</label>
+            <InputTextArea @bind-Value="feedbackForm.Comment" class="form-control" />
+        </div>
+        <button class="btn btn-success" type="submit">Submit</button>
+        <button class="btn btn-secondary ms-2" @onclick="() => feedbackAppointmentId = null">Cancel</button>
+    </EditForm>
+}
+
+
+@code {
+    private List<AppointmentDto> appointments = new();
+    private int? rescheduleAppointmentId;
+    private RescheduleFormModel rescheduleForm = new();
+
+    private int? feedbackAppointmentId;
+    private FeedbackFormModel feedbackForm = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadAppointments();
+    }
+
+    private async Task LoadAppointments()
+    {
+        var authState = await AuthProvider.GetAuthenticationStateAsync();
+        var userId = authState.User.FindFirst(c => c.Type.Contains("nameidentifier"))?.Value;
+
+        if (string.IsNullOrWhiteSpace(userId)) return;
+
+        var result = await Http.GetFromJsonAsync<PaginatedAppointments>($"api/appointments/search?patientId={userId}");
+        if (result != null)
+            appointments = result.Data;
+    }
+
+    private async Task CancelAppointment(int appointmentId)
+    {
+        var res = await Http.PostAsync($"api/appointments/{appointmentId}/cancel", null);
+        if (res.IsSuccessStatusCode)
+        {
+            var target = appointments.FirstOrDefault(a => a.Id == appointmentId);
+            if (target != null) target.Status = AppointmentStatus.Cancelled;
+        }
+    }
+
+    private void ShowRescheduleForm(int appointmentId)
+    {
+        rescheduleAppointmentId = appointmentId;
+        rescheduleForm = new RescheduleFormModel { NewDate = DateTime.Today.AddDays(1) };
+    }
+
+    private async Task SubmitReschedule()
+    {
+        if (!rescheduleAppointmentId.HasValue) return;
+
+        var res = await Http.PostAsJsonAsync($"api/appointments/{rescheduleAppointmentId}/reschedule", rescheduleForm);
+
+        if (res.IsSuccessStatusCode)
+        {
+            var appt = appointments.FirstOrDefault(a => a.Id == rescheduleAppointmentId);
+            if (appt != null)
+                appt.ScheduledDateTime = rescheduleForm.NewDate;
+
+            rescheduleAppointmentId = null;
+        }
+    }
+
+    private void ShowFeedbackForm(int appointmentId)
+    {
+        feedbackAppointmentId = appointmentId;
+        feedbackForm = new FeedbackFormModel(); // reset
+    }
+
+    private async Task SubmitFeedback()
+    {
+        if (!feedbackAppointmentId.HasValue) return;
+
+        feedbackForm.AppointmentId = feedbackAppointmentId.Value;
+
+        var res = await Http.PostAsJsonAsync("api/feedback", feedbackForm);
+        if (res.IsSuccessStatusCode)
+        {
+            feedbackAppointmentId = null;
+            await LoadAppointments(); // refresh list
+        }
+    }
+
+    public class RescheduleFormModel
+    {
+        public DateTime NewDate { get; set; }
+    }
+
+
+    public class FeedbackFormModel
+    {
+        public int AppointmentId { get; set; }
+        public int Rating { get; set; }
+        public string Comment { get; set; } = string.Empty;
+    }
+
+    public class AppointmentDto
+    {
+        public int Id { get; set; }
+        public DateTime ScheduledDateTime { get; set; }
+        public AppointmentStatus Status { get; set; }
+        public string Notes { get; set; } = "";
+        public DoctorInfo? Doctor { get; set; }
+    }
+
+    public class DoctorInfo
+    {
+        public string FullName { get; set; } = "";
+    }
+
+    public class PaginatedAppointments
+    {
+        public List<AppointmentDto> Data { get; set; } = new();
+    }
+}

@@ -1,0 +1,223 @@
+﻿@using Microsoft.AspNetCore.Components.Authorization;
+
+@page "/doctor-appointments"
+@inject HttpClient Http
+@inject AuthenticationStateProvider AuthStateProvider
+
+<h3>My Appointments</h3>
+
+@if (appointments == null)
+{
+    <p>Loading appointments...</p>
+}
+else if (!appointments.Any())
+{
+    <p>No appointments found.</p>
+}
+else
+{
+    <table class="table">
+        <thead>
+            <tr>
+                <th>Date</th>
+                <th>Patient</th>
+                <th>Status</th>
+                <th>Notes</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var appt in appointments)
+            {
+                <tr>
+                    <td>@appt.ScheduledDateTime.ToString("yyyy-MM-dd HH:mm")</td>
+                    <td>@appt.Patient?.FullName</td>
+                    <td>@appt.Status.ToString()</td>
+                    <td>@appt.Notes</td>
+                    <td>
+                        @if (appt.Status == AppointmentStatus.Pending)
+                        {
+                            <button class="btn btn-sm btn-success me-1" @onclick="() => HandleApproval(appt.Id, true)">Approve</button>
+                            <button class="btn btn-sm btn-danger" @onclick="() => HandleApproval(appt.Id, false)">Reject</button>
+                        }
+                        else if (appt.Status == AppointmentStatus.Approved)
+                        {
+                            <button class="btn btn-sm btn-primary" @onclick="() => TogglePrescriptionForm(appt.Id)">Prescribe</button>
+                        }
+                        else if (appt.Status == AppointmentStatus.Completed)
+                        {
+                            var fb = feedbackList.FirstOrDefault(f => f.AppointmentId == appt.Id);
+                            if (fb != null)
+                            {
+                                <div>
+                                    <span class="badge bg-info">⭐ @fb.Rating</span>
+                                    <button class="btn btn-link p-0 ms-2" @onclick="() => openFeedbackForAppointmentId = appt.Id">
+                                        View Feedback
+                                    </button>
+                                </div>
+                            }
+                            else
+                            {
+                                <span>No feedback</span>
+                            }
+                        }
+                        else
+                        {
+                            <span>-</span>
+                        }
+                    </td>
+
+                </tr>
+            }
+        </tbody>
+    </table>
+
+    @if (selectedAppointmentId.HasValue)
+    {
+        <EditForm Model="prescription" OnValidSubmit="SubmitPrescription">
+            <h5>Issue Prescription</h5>
+            <div class="mb-2">
+                <InputText @bind-Value="prescription.MedicationName" class="form-control" placeholder="Medication Name" />
+            </div>
+            <div class="mb-2">
+                <InputText @bind-Value="prescription.Dosage" class="form-control" placeholder="Dosage" />
+            </div>
+            <div class="mb-2">
+                <InputTextArea @bind-Value="prescription.Instructions" class="form-control" placeholder="Instructions" />
+            </div>
+            <button class="btn btn-success" type="submit">Submit Prescription</button>
+            <button class="btn btn-secondary ms-2" @onclick="() => selectedAppointmentId = null">Cancel</button>
+        </EditForm>
+    }
+
+}
+
+@if (openFeedbackForAppointmentId.HasValue)
+{
+    var fb = feedbackList.FirstOrDefault(f => f.AppointmentId == openFeedbackForAppointmentId.Value);
+    if (fb != null)
+    {
+        <div class="card p-3 mt-3 shadow" style="max-width: 500px;">
+            <h5>Patient Feedback</h5>
+            <p><strong>Rating:</strong> @fb.Rating</p>
+            <p><strong>Comment:</strong> @fb.Comment</p>
+            <p><small class="text-muted">Submitted: @fb.SubmittedAt.ToString("g")</small></p>
+            <button class="btn btn-sm btn-secondary" @onclick="() => openFeedbackForAppointmentId = null">Close</button>
+        </div>
+    }
+}
+
+
+@code {
+    private List<AppointmentDto> appointments = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        var authState = await AuthStateProvider.GetAuthenticationStateAsync();
+        var user = authState.User;
+        var doctorId = user.Claims.FirstOrDefault(c => c.Type.Contains("nameidentifier"))?.Value;
+
+        if (string.IsNullOrEmpty(doctorId)) return;
+
+        var result = await Http.GetFromJsonAsync<PaginatedAppointments>($"api/appointments/search?doctorId={doctorId}");
+        if (result != null)
+        {
+            appointments = result.Data;
+        }
+
+        var fb = await Http.GetFromJsonAsync<List<FeedbackDto>>("api/feedback/for-doctor");
+        if (fb != null)
+        {
+            feedbackList = fb;
+        }
+    }
+
+
+    private async Task HandleApproval(int appointmentId, bool approve)
+    {
+        var endpoint = $"api/appointments/{appointmentId}/" + (approve ? "approve" : "reject");
+        var response = await Http.PostAsync(endpoint, null);
+
+        if (response.IsSuccessStatusCode)
+        {
+            var appt = appointments.FirstOrDefault(a => a.Id == appointmentId);
+            if (appt != null)
+                appt.Status = approve ? AppointmentStatus.Approved : AppointmentStatus.Rejected;
+        }
+    }
+
+    public enum AppointmentStatus
+    {
+        Pending,
+        Approved,
+        Rejected,
+        Completed,
+        Cancelled
+    }
+
+    public class AppointmentDto
+    {
+        public int Id { get; set; }
+        public DateTime ScheduledDateTime { get; set; }
+        public string Notes { get; set; } = string.Empty;
+        public AppointmentStatus Status { get; set; }
+        public PatientInfo? Patient { get; set; }
+    }
+
+    public class PatientInfo
+    {
+        public string? FullName { get; set; }
+    }
+
+    public class PaginatedAppointments
+    {
+        public List<AppointmentDto> Data { get; set; } = new();
+    }
+
+    private int? selectedAppointmentId = null;
+
+    private CreatePrescriptionDto prescription = new();
+
+    private void TogglePrescriptionForm(int appointmentId)
+    {
+        selectedAppointmentId = appointmentId;
+        prescription = new CreatePrescriptionDto
+        {
+            AppointmentId = appointmentId
+        };
+    }
+
+    private async Task SubmitPrescription()
+    {
+        var response = await Http.PostAsJsonAsync("api/prescriptions", prescription);
+
+        if (response.IsSuccessStatusCode)
+        {
+            selectedAppointmentId = null;
+        }
+        else
+        {
+            Console.WriteLine("Prescription failed");
+        }
+    }
+
+    public class CreatePrescriptionDto
+    {
+        public int AppointmentId { get; set; }
+        public string MedicationName { get; set; } = string.Empty;
+        public string Dosage { get; set; } = string.Empty;
+        public string Instructions { get; set; } = string.Empty;
+    }
+
+    private List<FeedbackDto> feedbackList = new();
+    private int? openFeedbackForAppointmentId;
+
+    public class FeedbackDto
+    {
+        public int AppointmentId { get; set; }
+        public int Rating { get; set; }
+        public string Comment { get; set; } = "";
+        public DateTime SubmittedAt { get; set; }
+    }
+
+}

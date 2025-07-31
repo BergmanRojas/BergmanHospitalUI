@@ -1,0 +1,60 @@
+﻿@using BergmanHospitalUI.Services
+@using BergmanHospitalUI.Models
+@using Microsoft.AspNetCore.Components.Authorization;
+
+@page "/login"
+@inject HttpClient Http
+@inject NavigationManager Navigation
+@inject TokenProvider TokenProvider
+@inject AuthenticationStateProvider AuthProvider
+
+<h3>Login</h3>
+
+@if (!string.IsNullOrEmpty(errorMessage))
+{
+    <p class="text-danger">@errorMessage</p>
+}
+
+<EditForm Model="@loginModel" OnValidSubmit="HandleLogin">
+    <DataAnnotationsValidator />
+    <ValidationSummary />
+
+    <InputText @bind-Value="loginModel.Email" placeholder="Email" class="form-control" />
+    <InputText @bind-Value="loginModel.Password" type="password" placeholder="Password" class="form-control mt-2" />
+    <button class="btn btn-primary mt-2">Login</button>
+</EditForm>
+
+@code {
+    private LoginDto loginModel = new();
+    private string? errorMessage;
+
+    private async Task HandleLogin()
+    {
+        var response = await Http.PostAsJsonAsync("api/auth/login", loginModel);
+
+        if (response.IsSuccessStatusCode)
+        {
+            var result = await response.Content.ReadFromJsonAsync<TokenResponse>();
+            if (result is not null)
+            {
+                TokenProvider.SetToken(result.Token);
+
+                if (AuthProvider is CustomAuthStateProvider customProvider)
+                {
+                    await customProvider.MarkUserAsAuthenticated(result.Token);
+                }
+
+                Navigation.NavigateTo("/");
+            }
+        }
+        else
+        {
+            errorMessage = "Login failed. Please check your credentials.";
+        }
+    }
+
+    private class TokenResponse
+    {
+        public string Token { get; set; } = string.Empty;
+    }
+}

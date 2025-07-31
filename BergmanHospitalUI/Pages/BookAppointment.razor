@@ -1,0 +1,59 @@
+﻿@page "/book"
+@inject HttpClient Http
+@using System.Net.Http.Json
+@using BergmanHospitalUI.Models
+
+<h3>Book Appointment</h3>
+
+@if (successMessage != null)
+{
+    <p class="text-success">@successMessage</p>
+}
+
+@if (doctors == null)
+{
+    <p>Loading doctors...</p>
+}
+else
+{
+    <EditForm Model="@appointment" OnValidSubmit="@SubmitAppointment">
+        <label>Doctor</label>
+        <InputSelect @bind-Value="appointment.DoctorId" class="form-control">
+            <option value="">-- Select Doctor --</option>
+            @foreach (var doc in doctors)
+            {
+                <option value="@doc.Id">@doc.FullName</option>
+            }
+        </InputSelect>
+
+        <label>Date & Time</label>
+        @* <InputDate @bind-Value="appointment.ScheduledDateTime" /> *@
+        <input @bind-value="appointment.ScheduledDateTime" type="datetime-local" class="form-control" />
+
+        <label>Notes</label>
+        <InputTextArea @bind-Value="appointment.Notes" placeholder="Optional notes" class="form-control" />
+        <br />
+        <button type="submit" class="btn btn-secondary">Book</button>
+    </EditForm>
+}
+
+@code {
+    AppointmentDto appointment = new();
+    string? successMessage;
+
+    List<DoctorDto>? doctors;
+
+    protected override async Task OnInitializedAsync()
+    {
+        doctors = await Http.GetFromJsonAsync<List<DoctorDto>>("api/users/doctors");
+        appointment.ScheduledDateTime = DateTime.Today;
+    }
+
+    private async Task SubmitAppointment()
+    {
+        var response = await Http.PostAsJsonAsync("api/appointments/book", appointment);
+        successMessage = response.IsSuccessStatusCode
+            ? "Appointment booked successfully."
+            : "Failed to book appointment.";
+    }
+}

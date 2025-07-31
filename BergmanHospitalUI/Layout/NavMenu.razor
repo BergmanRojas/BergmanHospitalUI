@@ -1,0 +1,12 @@
+﻿@using Microsoft.AspNetCore.Components.Authorization
+
+@inject AuthenticationStateProvider AuthStateProvider
+
+<AuthorizeView>
+    <Authorized>
+        <NavLink href="/logout" class="nav-link">Logout</NavLink>
+    </Authorized>
+    <NotAuthorized>
+        <NavLink href="/login" class="nav-link">Login</NavLink>
+    </NotAuthorized>
+</AuthorizeView>

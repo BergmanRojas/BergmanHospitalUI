@@ -1,0 +1,67 @@
+﻿@inherits LayoutComponentBase
+@using System.Security.Claims
+@using Microsoft.AspNetCore.Components.Authorization
+@inject AuthenticationStateProvider AuthStateProvider
+@inject IJSRuntime JS
+
+<CascadingAuthenticationState>
+    @if (isLoading)
+    {
+        <p><em>Loading layout...</em></p>
+    }
+    else
+    {
+        @if (role == "Admin")
+        {
+            <LayoutView Layout="typeof(Layout.AdminLayout)">
+                @Body
+            </LayoutView>
+        }
+        else if (role == "Doctor")
+        {
+            <LayoutView Layout="typeof(Layout.DoctorLayout)">
+                @Body
+            </LayoutView>
+        }
+        else if (role == "Patient")
+        {
+            <LayoutView Layout="typeof(Layout.PatientLayout)">
+                @Body
+            </LayoutView>
+        }
+        else
+        {
+            <LayoutView Layout="typeof(Layout.MainLayout)">
+                @Body
+            </LayoutView>
+        }
+    }
+</CascadingAuthenticationState>
+
+@code {
+    private string? role;
+    private bool isLoading = true;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        var authState = await AuthStateProvider.GetAuthenticationStateAsync();
+        var user = authState.User;
+
+        if (user.Identity?.IsAuthenticated == true)
+        {
+            foreach (var claim in user.Claims)
+            {
+                var message = $"CLAIM TYPE: {claim.Type} - VALUE: {claim.Value}";
+                await JS.InvokeVoidAsync("console.log", message);
+                Console.WriteLine(message);
+            }
+
+            role = user.FindFirst(ClaimTypes.Role)?.Value
+                 ?? user.FindFirst("role")?.Value
+                 ?? user.FindFirst("roles")?.Value;
+        }
+
+        isLoading = false;
+        StateHasChanged();
+    }
+}

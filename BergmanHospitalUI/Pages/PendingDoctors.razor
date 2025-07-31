@@ -1,0 +1,74 @@
+﻿@page "/pending-doctors"
+@inject HttpClient Http
+
+<h3>Pending Doctor Approvals</h3>
+
+@if (pendingDoctors == null)
+{
+    <p><em>Loading...</em></p>
+}
+else if (!pendingDoctors.Any())
+{
+    <p>No pending doctors.</p>
+}
+else
+{
+    <table class="table">
+        <thead>
+            <tr>
+                <th>Full Name</th>
+                <th>Email</th>
+                <th>Specialization</th>
+                <th>Working Hours</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var doc in pendingDoctors)
+            {
+                <tr>
+                    <td>@doc.FullName</td>
+                    <td>@doc.Email</td>
+                    <td>@doc.Specialization</td>
+                    <td>@doc.WorkingHours</td>
+                    <td>
+                        <button class="btn btn-success btn-sm" @onclick="() => Approve(doc.Id)">Approve</button>
+                        <button class="btn btn-danger btn-sm ms-2" @onclick="() => Reject(doc.Id)">Reject</button>
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}
+
+@code {
+    private List<PendingDoctorDto> pendingDoctors = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        pendingDoctors = await Http.GetFromJsonAsync<List<PendingDoctorDto>>("api/users/pending-doctors") ?? new();
+    }
+
+    private async Task Approve(int id)
+    {
+        var res = await Http.PostAsync($"api/users/approve-doctor/{id}", null);
+        if (res.IsSuccessStatusCode)
+            pendingDoctors.RemoveAll(d => d.Id == id);
+    }
+
+    private async Task Reject(int id)
+    {
+        var res = await Http.PostAsync($"api/users/reject-doctor/{id}", null);
+        if (res.IsSuccessStatusCode)
+            pendingDoctors.RemoveAll(d => d.Id == id);
+    }
+
+    public class PendingDoctorDto
+    {
+        public int Id { get; set; }
+        public string FullName { get; set; } = string.Empty;
+        public string Email { get; set; } = string.Empty;
+        public string Specialization { get; set; } = string.Empty;
+        public string WorkingHours { get; set; } = string.Empty;
+    }
+}

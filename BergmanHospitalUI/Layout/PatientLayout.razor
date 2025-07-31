@@ -1,0 +1,16 @@
+﻿@namespace BergmanHospitalUI.Layout
+@inherits LayoutComponentBase
+@using BergmanHospitalUI.Shared
+
+<SharedLayoutShell Title="Patient Dashboard">
+    <SidebarContent>
+        <NavLink href="/" class="nav-link">Dashboard</NavLink>
+        <NavLink href="/book" class="nav-link">Book Appointment</NavLink>
+        <NavLink href="/my-appointments" class="nav-link">My Appointments</NavLink>
+        <NavLink href="/prescriptions" class="nav-link">My Prescriptions</NavLink>
+    </SidebarContent>
+
+    <ChildContent>
+        @Body
+    </ChildContent>
+</SharedLayoutShell>

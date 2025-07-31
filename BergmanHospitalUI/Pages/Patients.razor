@@ -1,0 +1,51 @@
+﻿@page "/patients"
+@inject HttpClient Http
+
+<h3>My Past Patients</h3>
+
+@if (patients == null)
+{
+    <p><em>Loading...</em></p>
+}
+else if (!patients.Any())
+{
+    <p>No patients found.</p>
+}
+else
+{
+    <table class="table table-bordered">
+        <thead>
+            <tr>
+                <th>Full Name</th>
+                <th>Email</th>
+                <th>Medical History</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var p in patients)
+            {
+                <tr>
+                    <td>@p.FullName</td>
+                    <td>@p.Email</td>
+                    <td>@p.MedicalHistory</td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}
+
+@code {
+    private List<PatientInfo> patients = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        patients = await Http.GetFromJsonAsync<List<PatientInfo>>("api/patients/by-doctor") ?? new();
+    }
+
+    public class PatientInfo
+    {
+        public string FullName { get; set; } = string.Empty;
+        public string Email { get; set; } = string.Empty;
+        public string MedicalHistory { get; set; } = string.Empty;
+    }
+}

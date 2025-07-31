@@ -1,0 +1,18 @@
+﻿@namespace BergmanHospitalUI.Layout
+@inherits LayoutComponentBase
+
+<div class="main-layout">
+    <div class="sidebar">
+        <NavMenu />
+    </div>
+
+    <main class="main-content">
+        <div class="top-row px-4">
+            <a href="#">About</a>
+        </div>
+
+        <article class="content px-4">
+            @Body
+        </article>
+    </main>
+</div>

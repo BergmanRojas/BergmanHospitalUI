@@ -1,0 +1,22 @@
+﻿@using BergmanHospitalUI.Services
+@using BergmanHospitalUI.Models
+@using Microsoft.AspNetCore.Components.Authorization;
+
+@page "/logout"
+@inject TokenProvider TokenProvider
+@inject AuthenticationStateProvider AuthProvider
+@inject NavigationManager Nav
+
+@code {
+    protected override async Task OnInitializedAsync()
+    {
+        TokenProvider.ClearToken();
+
+        if (AuthProvider is CustomAuthStateProvider auth)
+        {
+            auth.NotifyAuthenticationStateChanged();
+        }
+
+        Nav.NavigateTo("/login", true);
+    }
+}

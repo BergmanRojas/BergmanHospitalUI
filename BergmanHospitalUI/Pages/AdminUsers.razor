@@ -1,0 +1,144 @@
+﻿@page "/users"
+@inject HttpClient Http
+
+<h3>All Users</h3>
+<div class="mb-3 d-flex align-items-center gap-2">
+    <label>Role:</label>
+    <select @bind="selectedRole" @bind:event="onchange" class="form-select w-auto">
+        <option value="">All</option>
+        <option value="Doctor">Doctor</option>
+        <option value="Patient">Patient</option>
+    </select>
+
+    <input @bind="searchTerm" @bind:event="oninput" class="form-control w-25" placeholder="Search by name/email" />
+    <button class="btn btn-outline-primary" @onclick="OnFilterChanged">Search</button>
+</div>
+
+@if (isLoading)
+{
+    <p><em>Loading users...</em></p>
+}
+else if (response == null || !response.Items.Any())
+{
+    <p>No users found.</p>
+}
+else
+{
+    <table class="table">
+        <thead>
+            <tr>
+                <th>Name</th>
+                <th>Email</th>
+                <th>Role</th>
+                <th>Approved?</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var user in response.Items)
+            {
+                <tr>
+                    <td>@user.FullName</td>
+                    <td>@user.Email</td>
+                    <td>@user.Role</td>
+                    <td>
+                        @if (user.Role == "Doctor")
+                        {
+                            @((user.IsApproved == true) ? "✅" : "❌")
+                        }
+                        else
+                        {
+                            <em>N/A</em>
+                        }
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+
+    <div class="d-flex justify-content-between mt-3">
+        <button class="btn btn-outline-primary" @onclick="PrevPage" disabled="@(!CanGoBack)">Previous</button>
+        <span>Page @response.Page of @TotalPages</span>
+        <button class="btn btn-outline-primary" @onclick="NextPage" disabled="@(!CanGoNext)">Next</button>
+    </div>
+}
+
+@code {
+    private bool isLoading = true;
+    private int currentPage = 1;
+    private const int pageSize = 20;
+    private PagedResponse response = new();
+
+    private string selectedRole = "";
+    private string searchTerm = "";
+
+    private int TotalPages => (int)Math.Ceiling((double)response.TotalCount / pageSize);
+    private bool CanGoBack => currentPage > 1;
+    private bool CanGoNext => currentPage < TotalPages;
+
+    protected override async Task OnInitializedAsync() => await LoadPage();
+
+    private async Task LoadPage()
+    {
+        isLoading = true;
+
+        var query = $"api/users?page={currentPage}&pageSize={pageSize}";
+
+        if (!string.IsNullOrWhiteSpace(selectedRole))
+            query += $"&role={selectedRole}";
+
+        if (!string.IsNullOrWhiteSpace(searchTerm))
+            query += $"&search={searchTerm}";
+
+        response = await Http.GetFromJsonAsync<PagedResponse>(query) ?? new();
+
+        isLoading = false;
+    }
+
+
+    private async Task PrevPage()
+    {
+        if (CanGoBack)
+        {
+            currentPage--;
+            await LoadPage();
+        }
+    }
+
+    private async Task NextPage()
+    {
+        if (CanGoNext)
+        {
+            currentPage++;
+            await LoadPage();
+        }
+    }
+
+    private async Task OnFilterChanged()
+    {
+        currentPage = 1;
+        await LoadPage();
+    }
+
+    private async Task RoleChanged(ChangeEventArgs e)
+    {
+        selectedRole = e.Value?.ToString() ?? "";
+        await OnFilterChanged();
+    }
+
+    public class PagedResponse
+    {
+        public int TotalCount { get; set; }
+        public int Page { get; set; }
+        public int PageSize { get; set; }
+        public List<UserDto> Items { get; set; } = new();
+    }
+
+    public class UserDto
+    {
+        public string Id { get; set; } = string.Empty;
+        public string FullName { get; set; } = string.Empty;
+        public string Email { get; set; } = string.Empty;
+        public string Role { get; set; } = string.Empty;
+        public bool? IsApproved { get; set; }
+    }
+}
