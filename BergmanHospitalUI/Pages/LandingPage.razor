@@ -1,0 +1,28 @@
+﻿@inject NavigationManager Nav
+@using Microsoft.AspNetCore.Components.Authorization
+
+@* <AuthorizeView>
+  <NotAuthorized>
+    <div class="landing-hero text-center py-5">
+      <h1 class="display-4">Welcome to Bergman Hospital</h1>
+      <p class="lead">Your health, our priority—manage appointments, prescriptions, and more.</p>
+      <button class="btn btn-primary btn-lg me-2" @onclick="@(() => Nav.NavigateTo("/login"))">Log In</button>
+    </div>
+  </NotAuthorized>
+  <Authorized>
+    If they’re already signed in, hand off to the Home.razor role-switcher
+    <RedirectHome />
+  </Authorized>
+</AuthorizeView> *@
+
+
+<div class="landing-container d-flex flex-column justify-content-center align-items-center text-center">
+    <div class="overlay">
+        <h1 class="display-3 fw-bold text-white">Welcome to Bergman Hospital</h1>
+        <p class="lead text-white">Compassionate care. Anytime, anywhere.</p>
+        <div class="mt-4">
+            <button class="btn btn-primary btn-lg me-2" @onclick="@(() => Nav.NavigateTo("/login"))">Log In</button>
+            @* <button class="btn btn-outline-light btn-lg" @onclick="() => Nav.NavigateTo("/register")">Register</button> *@
+        </div>
+    </div>
+</div>

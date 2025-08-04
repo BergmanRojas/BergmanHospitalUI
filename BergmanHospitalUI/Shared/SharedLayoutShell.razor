@@ -38,6 +38,6 @@
         if (AuthProvider is CustomAuthStateProvider custom)
             custom.NotifyAuthenticationStateChanged();
 
-        Navigation.NavigateTo("/login", forceLoad: true);
+        Navigation.NavigateTo("/", forceLoad: true);
     }
 }

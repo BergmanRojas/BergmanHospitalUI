@@ -1,0 +1,63 @@
+﻿@page "/"
+@using BergmanHospitalUI.Shared
+@using Microsoft.AspNetCore.Components.Authorization
+@using System.Security.Claims
+@inject AuthenticationStateProvider Auth
+
+@if (loading)
+{
+    <p>Loading...</p>
+}
+else
+{
+    <AuthorizeView>
+        <NotAuthorized>
+            <LayoutView Layout="typeof(BlankLayout)">
+                <LandingPage />
+            </LayoutView>
+        </NotAuthorized>
+        <Authorized>
+            @if (role == "Admin")
+            {
+                <LayoutView Layout="typeof(MainLayout)">
+                    <AdminHome />
+                </LayoutView>
+            }
+            else if (role == "Doctor")
+            {
+                <LayoutView Layout="typeof(MainLayout)">
+                    <DoctorHome />
+                </LayoutView>
+            }
+            else if (role == "Patient")
+            {
+                <LayoutView Layout="typeof(MainLayout)">
+                    <PatientHome />
+                </LayoutView>
+            }
+            else
+            {
+                <p class="text-danger">Unrecognized role. Please log out and try again.</p>
+            }
+        </Authorized>
+    </AuthorizeView>
+}
+
+@code {
+    private ClaimsPrincipal user;
+    private string? role;
+    private bool loading = true;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var auth = await Auth.GetAuthenticationStateAsync();
+        user = auth.User;
+
+        if (user.Identity?.IsAuthenticated == true)
+        {
+            role = user.FindFirst(c => c.Type == ClaimTypes.Role)?.Value;
+        }
+
+        loading = false;
+    }
+}

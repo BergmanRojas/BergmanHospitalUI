@@ -1,6 +1,6 @@
 ﻿@using BergmanHospitalUI.Services
 @using BergmanHospitalUI.Models
-@using Microsoft.AspNetCore.Components.Authorization;
+@using Microsoft.AspNetCore.Components.Authorization
 
 @page "/login"
 @inject HttpClient Http
@@ -8,21 +8,37 @@
 @inject TokenProvider TokenProvider
 @inject AuthenticationStateProvider AuthProvider
 
-<h3>Login</h3>
+<div style="min-height: 100vh; display: flex; align-items: center; justify-content: center; background-color: #f8f9fa;background: url('/images/hospital-hero.jpg') no-repeat center center fixed;
+    background-size: cover;">
+    <div style="background-color: white; padding: 2rem; border-radius: 8px; box-shadow: 0 0 10px rgba(0,0,0,0.1); width: 100%; max-width: 400px;">
+        <h3 style="text-align: center; margin-bottom: 1.5rem;">Login</h3>
 
-@if (!string.IsNullOrEmpty(errorMessage))
-{
-    <p class="text-danger">@errorMessage</p>
-}
+        @if (!string.IsNullOrEmpty(errorMessage))
+        {
+            <p style="color: red; text-align: center;">@errorMessage</p>
+        }
 
-<EditForm Model="@loginModel" OnValidSubmit="HandleLogin">
-    <DataAnnotationsValidator />
-    <ValidationSummary />
+        <EditForm Model="@loginModel" OnValidSubmit="HandleLogin">
+            <DataAnnotationsValidator />
+            <ValidationSummary />
 
-    <InputText @bind-Value="loginModel.Email" placeholder="Email" class="form-control" />
-    <InputText @bind-Value="loginModel.Password" type="password" placeholder="Password" class="form-control mt-2" />
-    <button class="btn btn-primary mt-2">Login</button>
-</EditForm>
+            <div style="margin-bottom: 1rem;">
+                <InputText @bind-Value="loginModel.Email" placeholder="Email"
+                           style="width: 100%; padding: 0.5rem; border: 1px solid #ccc; border-radius: 4px;" />
+            </div>
+
+            <div style="margin-bottom: 1rem;">
+                <InputText @bind-Value="loginModel.Password" type="password" placeholder="Password"
+                           style="width: 100%; padding: 0.5rem; border: 1px solid #ccc; border-radius: 4px;" />
+            </div>
+
+            <button type="submit"
+                    style="width: 100%; padding: 0.5rem; background-color: #1F4E79; color: white; border: none; border-radius: 4px;">
+                Login
+            </button>
+        </EditForm>
+    </div>
+</div>
 
 @code {
     private LoginDto loginModel = new();

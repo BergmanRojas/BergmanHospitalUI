@@ -35,8 +35,6 @@ else
                 <th>Doctor</th>
                 <th>Status</th>
                 <th>Notes</th>
-                <th>Doctor Approved</th>
-                <th>Toggle Approval</th>
             </tr>
         </thead>
         <tbody>
@@ -48,25 +46,6 @@ else
                     <td>@appt.Doctor?.FullName</td>
                     <td>@appt.Status.ToString()</td>
                     <td>@appt.Notes</td>
-                    <td>
-                        @if (appt.Doctor?.IsApproved == true)
-                        {
-                            <span class="text-success">Yes</span>
-                        }
-                        else
-                        {
-                            <span class="text-danger">No</span>
-                        }
-                    </td>
-                    <td>
-                        @if (appt.Doctor != null)
-                        {
-                            <button class="btn btn-sm @(appt.Doctor.IsApproved ? "btn-warning" : "btn-success")"
-                                    @onclick="() => ToggleDoctorApproval(appt.Doctor.Id)">
-                                @(appt.Doctor.IsApproved ? "Revoke" : "Approve")
-                            </button>
-                        }
-                    </td>
                 </tr>
             }
         </tbody>
@@ -83,24 +62,6 @@ else
         if (result != null)
         {
             appointments = result.Data;
-        }
-    }
-
-    private async Task ToggleDoctorApproval(string doctorId)
-    {
-        var doctor = appointments.Select(a => a.Doctor).FirstOrDefault(d => d?.Id == doctorId);
-
-        if (doctor == null)
-            return;
-
-        var endpoint = doctor.IsApproved
-            ? $"api/users/{doctorId}/revoke"
-            : $"api/users/{doctorId}/approve";
-
-        var response = await Http.PostAsync(endpoint, null);
-        if (response.IsSuccessStatusCode)
-        {
-            doctor.IsApproved = !doctor.IsApproved;
         }
     }
 
@@ -147,9 +108,6 @@ else
             Console.WriteLine($"Error: {ex.Message}");
         }
     }
-
-
-
 
     public class PaginatedAppointments
     {
