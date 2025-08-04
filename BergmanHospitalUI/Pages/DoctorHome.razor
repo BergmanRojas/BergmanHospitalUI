@@ -1,9 +1,29 @@
-﻿@layout MainLayout
+﻿@using Microsoft.AspNetCore.Components.Authorization
+@using System.Security.Claims
+@layout MainLayout
+@inject AuthenticationStateProvider AuthProvider
 
 <div class="d-flex flex-wrap gap-3">
     <p>
-        Welcome to your Doctor Dashboard. <br />
+        Welcome, @fullName. <br />
         Here, you can easily manage your appointments, view and issue prescriptions, and access your list of assigned patients. <br />
         This centralized space is designed to streamline your daily workflow and enhance patient care efficiency.
     </p>
 </div>
+
+@code {
+    private string fullName = "";
+
+    protected override async Task OnInitializedAsync()
+    {
+        var authState = await AuthProvider.GetAuthenticationStateAsync();
+        var user = authState.User;
+
+        if (user.Identity?.IsAuthenticated == true)
+        {
+            fullName = user.FindFirst(c => c.Type == ClaimTypes.Name)?.Value
+                    ?? user.FindFirst("name")?.Value
+                    ?? "Doctor";
+        }
+    }
+}

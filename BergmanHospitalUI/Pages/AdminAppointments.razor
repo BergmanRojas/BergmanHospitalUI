@@ -32,7 +32,9 @@ else
             <tr>
                 <th>Date</th>
                 <th>Patient</th>
+                <th>Patient Email</th>
                 <th>Doctor</th>
+                <th>Doctor Email</th>
                 <th>Status</th>
                 <th>Notes</th>
             </tr>
@@ -43,7 +45,9 @@ else
                 <tr>
                     <td>@appt.ScheduledDateTime.ToString("yyyy-MM-dd HH:mm")</td>
                     <td>@appt.Patient?.FullName</td>
+                    <td>@appt.Patient?.Email</td>
                     <td>@appt.Doctor?.FullName</td>
+                    <td>@appt.Doctor?.Email</td>
                     <td>@appt.Status.ToString()</td>
                     <td>@appt.Notes</td>
                 </tr>
@@ -128,11 +132,13 @@ else
     {
         public string Id { get; set; } = string.Empty;
         public string FullName { get; set; } = string.Empty;
+        public string Email { get; set; } = string.Empty;
         public bool IsApproved { get; set; }
     }
 
     public class PatientInfo
     {
         public string FullName { get; set; } = string.Empty;
+        public string Email { get; set; } = string.Empty;
     }
 }

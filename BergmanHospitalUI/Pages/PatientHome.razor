@@ -1,6 +1,9 @@
-﻿@layout PatientLayout
+﻿@using Microsoft.AspNetCore.Components.Authorization
+@using System.Security.Claims
+@layout PatientLayout
+@inject AuthenticationStateProvider AuthProvider
 
-<h2>Welcome 🙂</h2>
+<h2>Welcome, @fullName. 🙂</h2>
 <br />
 <div class="row">
     <p>
@@ -9,3 +12,20 @@
         This platform is designed to give you convenient, secure access to your healthcare anytime, anywhere.
     </p>
 </div>
+
+@code {
+    private string fullName = "";
+
+    protected override async Task OnInitializedAsync()
+    {
+        var authState = await AuthProvider.GetAuthenticationStateAsync();
+        var user = authState.User;
+
+        if (user.Identity?.IsAuthenticated == true)
+        {
+            fullName = user.FindFirst(c => c.Type == ClaimTypes.Name)?.Value
+                    ?? user.FindFirst("name")?.Value
+                    ?? "Doctor";
+        }
+    }
+}
